@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Title>Fleck</Title>
+    <Version>0.0.0.1-local</Version>
+    <Authors>statenjason</Authors>
+    <Copyright>Copyright Jason Staten 2010-2018. All rights reserved.</Copyright>
+    <Description>C# WebSocket Implementation</Description>
+    <PackageLicenseUrl>https://github.com/statianzo/Fleck/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/statianzo/Fleck</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/statianzo/Fleck</RepositoryUrl>
+    <PackageTags>websockets server html5 events</PackageTags>
+    <TargetFrameworks>net6.0</TargetFrameworks>
+    <Platforms>AnyCPU;x64</Platforms>
+  </PropertyGroup>
+</Project>

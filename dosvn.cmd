@@ -1,0 +1,1 @@
+"C:\Program Files\TortoiseSVN\bin\TortoiseProc.exe" /command:commit /path:C:\GoldsmithsSVN\aaorganicart

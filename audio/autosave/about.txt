@@ -1,0 +1,3 @@
+This autosave directory is used for autosaving when not in the nwfs environment.
+The subfolders hold saved models and images.
+The models and images themselves should not generally be put into SVN or ...

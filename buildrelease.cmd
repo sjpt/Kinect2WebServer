@@ -1,0 +1,1 @@
+"C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" /property:configuration=release /property:platform=x64 /t:Clean,Build

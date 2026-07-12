@@ -2,9 +2,10 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <Platforms>x86;x64</Platforms>
     <ApplicationIcon>HANDSHAK.ICO</ApplicationIcon>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
 
@@ -44,7 +45,12 @@
     <ProjectReference Include="..\Fleck\Fleck.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\OrbbecSDK_DotNet\src\OrbbecSharp.csproj" />
+	</ItemGroup>
+
+
+	<ItemGroup>
     <Reference Include="Microsoft.Azure.Kinect.Sensor, Version=1.4.1.0, Culture=neutral, PublicKeyToken=6f6471c4ba98fac7, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\Program Files\Azure Kinect SDK v1.4.1\sdk\netstandard2.0\release\Microsoft.Azure.Kinect.Sensor.dll</HintPath>

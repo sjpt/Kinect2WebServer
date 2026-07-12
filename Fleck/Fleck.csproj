@@ -9,7 +9,8 @@
     <PackageProjectUrl>https://github.com/statianzo/Fleck</PackageProjectUrl>
     <RepositoryUrl>https://github.com/statianzo/Fleck</RepositoryUrl>
     <PackageTags>websockets server html5 events</PackageTags>
-    <TargetFrameworks>net6.0</TargetFrameworks>
+    <TargetFrameworks></TargetFrameworks>
     <Platforms>AnyCPU;x64</Platforms>
+    <TargetFramework>net9.0</TargetFramework>
   </PropertyGroup>
 </Project>

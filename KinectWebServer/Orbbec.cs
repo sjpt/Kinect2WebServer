@@ -1,5 +1,4 @@
-﻿using Microsoft.Kinect;
-using Orbbec; // Targetting the official OrbbecSDK_DotNet namespace
+﻿using Orbbec; // Targetting the official OrbbecSDK_DotNet namespace
 using System;
 using System.Net.Sockets;
 using System.Numerics;
@@ -11,12 +10,12 @@ using IWebSocketConnection = Fleck.IWebSocketConnection;
 #pragma warning disable IDE0130 // Namespace does not match folder structure
 
 /*
-mainly generated fro, Azure.cs by Gemini. need some changes
+mainly generated from Azure.cs by Gemini. needed some changes
 Count() => ProfileCount()
 FrameSet => Frameset
-GetDatqa => GetDataPtr
+GetData => GetDataPtr
 
-uint => int
+uint <=> int in a few places
 
  ****/
 

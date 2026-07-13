@@ -132,17 +132,21 @@ namespace Kinect2WebServer {
             AppDomain.CurrentDomain.DomainUnload += Exit;
             AppDomain.CurrentDomain.ProcessExit += Exit;
 
+            bool found = false;
+
             // bool zok = ZED.makeZedCamera(); // note, this is slow if no camera available
-            //try {
-            //    bestOrbbec = orbbec.Init("Main", null);     // test for Azure software
-            //} catch (Exception e) {
-            //    CWriteLine("Orbbec init error", ConsoleColor.Red);
-            //    CWriteLine(e.ToString());
-            //}
-
-
             try {
+                found = orbbec.Init("Main", null);     // test for Azure software
+            } catch (Exception e) {
+                CWriteLine("Orbbec init error", ConsoleColor.Red);
+                CWriteLine(e.ToString());
+            }
+
+
+
+            if (!found) try {
                 bestAzure = azure.Init("Main", null);     // test for Azure software
+                found = bestAzure;
             } catch (Exception e) {
                 CWriteLine("Azure init error", ConsoleColor.Red);
                 CWriteLine(e.ToString());

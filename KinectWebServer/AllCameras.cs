@@ -1,6 +1,8 @@
 ﻿#pragma warning disable IDE0040, IDE0049, CA1805, CA1304, CA1305, IDE0008, IDE0055, IDE0058, IDE0048, IDE0011
 
-// generic program to manage different CaptureDevices, 
+// generic program to manage different CaptureDevice
+// see also Program.cs for startup sequence (Main())
+// and Sender.cs for explicit commands, some of which are specific camera related (DoMessage(), line 181 etc)
 using Microsoft.Kinect;
 using System;
 using System.IO;

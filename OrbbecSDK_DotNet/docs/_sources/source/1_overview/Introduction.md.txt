@@ -1,0 +1,32 @@
+# Introduction
+
+This is a wrapper for the Orbbec SDK for DotNet. It supports .NET 8.0 and later versions, and is compatible with Windows and Linux platforms.
+
+It provides a simple and easy-to-use interface for accessing the Orbbec camera and performing various operations such as capturing depth images, color images, and performing point cloud generation.
+
+*   Obtain Depth, IR, and Color data streams.
+    
+*   Obtain IMU data streams.
+    
+*   Hardware D2C, Software D2C, and Software C2D.
+    
+*   Obtain Depth point cloud and RGBD point cloud.
+    
+*   Obtain multiple devices data .
+    
+*   Coordinate transformations between different coordinate systems.
+    
+*   Post-processing filters and HDR merge functionality (supported by the Gemini 330 series).
+    
+*   Presets (supported by Gemini 330 series).
+    
+*   Update Firmware.
+
+
+The v2-main branch is based the open source version of [Orbbec SDK v2](https://github.com/orbbec/OrbbecSDK_v2). 
+
+
+**If you need to use .NET Framework, please use [this repository](https://github.com/orbbec/OrbbecSDK_CSharp). However, .NET Framework is maintained for bug fixes only, and no new features will be added. We recommend using Orbbec SDK DotNet Wrapper instead**
+
+
+    

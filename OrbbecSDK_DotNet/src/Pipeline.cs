@@ -1,0 +1,319 @@
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+
+namespace Orbbec
+{
+    public delegate void FramesetCallback(Frameset frameset);
+
+    public class Pipeline : IDisposable
+    {
+        private NativeHandle _handle;
+        private Device _device;
+        private FramesetCallback _callback;
+        private NativeFramesetCallback _nativeCallback;
+
+        private void OnFrameset(IntPtr framesetPtr, IntPtr userData)
+        {
+            Frameset frameset = new Frameset(framesetPtr);
+            if(_callback != null)
+            {
+                _callback(frameset);
+            }
+            else
+            {
+                frameset.Dispose();
+            }
+        }
+
+        /**
+        * \if English
+        * @brief Pipeline is a high-level interface for applications, algorithms related RGBD data streams. Pipeline can provide alignment inside and synchronized
+        * FrameSet. Pipeline() no parameter version, which opens the first device in the list of devices connected to the OS by default. If the application has
+        * obtained the device through the DeviceList, opening the Pipeline() at this time will throw an exception that the device has been created. \else
+        * @brief Pipeline 是SDK的高级接口，适用于应用，算法等重点关注RGBD数据流常见，Pipeline在SDK内部可以提供对齐，同步后的FrameSet桢集合
+        * 直接方便客户使用。
+        * Pipeline()无参数版本，默认打开连接到OS的设备列表中的第一个设备。若应用已经通过DeviceList获取设备，此时打开Pipeline()会抛出设备已经创建异常。
+        * 需要开发者捕获异常处理。
+        * \endif
+        */
+        public Pipeline()
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_create_pipeline(ref error);
+            NativeException.HandleError(error);
+            _handle = new NativeHandle(handle, Delete);
+            _nativeCallback = new NativeFramesetCallback(OnFrameset);
+        }
+
+        /**
+        * \if English
+        * @brief
+        * For multi-device operations. Multiple devices need to be obtained through DeviceList, and the device
+        * and pipeline are bound through this interface. \else
+        * @brief
+        * 适用于多设备操作常见，此时需要通过DeviceList获取多个设备，通过该接口实现device和pipeline绑定。
+        * \endif
+        */
+        public Pipeline(Device device)
+        {
+            _device = device;
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_create_pipeline_with_device(device.GetNativeHandle().Ptr, ref error);
+            NativeException.HandleError(error);
+            _handle = new NativeHandle(handle, Delete);
+            _nativeCallback = new NativeFramesetCallback(OnFrameset);
+        }
+
+        /**
+        * \if English
+        * @brief Start the pipeline with configuration parameters
+        *
+        * @param config Parameter configuration of pipeline
+        * \else
+        * @brief 启动pipeline并配置参数
+        *
+        * @param config pipeline的参数配置
+        * \endif
+        */
+        public void Start(Config config)
+        {
+            IntPtr error = IntPtr.Zero;
+            obNative.ob_pipeline_start_with_config(_handle.Ptr, config == null ? IntPtr.Zero : config.GetNativeHandle().Ptr, ref error);
+            NativeException.HandleError(error);
+        }
+
+        /**
+        * \if English
+        * @brief Start the pipeline and set the frameset data callback
+        *
+        * @param config parameter configuration of pipeline
+        * @param callback  Set the callback to be triggered when all frame data in the frame set arrives
+        * \else
+        * @brief 启动pipeline并设置帧集合数据回调
+        *
+        * @param config pipeline的参数配置
+        * @param callback 设置帧集合中的所有帧数据都到达时触发回调
+        * \endif
+        */
+        public void Start(Config config, FramesetCallback callback)
+        {
+            _callback = callback;
+            IntPtr error = IntPtr.Zero;
+            obNative.ob_pipeline_start_with_callback(_handle.Ptr, config == null ? IntPtr.Zero : config.GetNativeHandle().Ptr, _nativeCallback, IntPtr.Zero, ref error);
+            NativeException.HandleError(error);
+        }
+
+        /**
+        * \if English
+        * @brief Stop pipeline
+        * \else
+        * @brief 停止pipeline
+        * \endif
+        */
+        public void Stop()
+        {
+            IntPtr error = IntPtr.Zero;
+            obNative.ob_pipeline_stop(_handle.Ptr, ref error);
+            NativeException.HandleError(error);
+        }
+
+        /**
+        * \if English
+        * @brief Get pipeline configuration parameters
+        *
+        * @return Config returns the configured parameters
+        * \else
+        * @brief 获取pipeline的配置参数
+        *
+        * @return Config 返回配置的参数
+        * \endif
+        */
+        public Config GetConfig()
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_pipeline_get_config(_handle.Ptr, ref error);
+            NativeException.HandleError(error);
+            return new Config(handle);
+        }
+
+        /**
+        * \if English
+        * @brief Waiting for frame set data
+        *
+        * @param timeout_ms  Waiting timeout (ms)
+        * @return Frameset returns the waiting frame set data
+        * \else
+        * @brief 等待帧集合数据
+        *
+        * @param timeout_ms 等待超时时间(毫秒)
+        * @return Frameset 返回等待的帧集合数据
+        * \endif
+        */
+        public Frameset WaitForFrames(UInt32 timeoutMs)
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_pipeline_wait_for_frameset(_handle.Ptr, timeoutMs, ref error);
+            NativeException.HandleError(error);
+            return handle != IntPtr.Zero ? new Frameset(handle) : null;
+        }
+
+        /**
+        * \if English
+        * @brief Get device object
+        *
+        * @return Device returns the device object
+        * \else
+        * @brief 获取设备对象
+        *
+        * @return Device 返回设备对象
+        * \endif
+        */
+        public Device GetDevice()
+        {
+            if(_device != null)
+            {
+                return _device;
+            }
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_pipeline_get_device(_handle.Ptr, ref error);
+            NativeException.HandleError(error);
+            return new Device(handle);
+        }
+
+        /**
+        * \if English
+        * @brief Get the stream profile of specified sensor
+        *
+        * @param sensorType Type of sensor
+
+        * @return std::shared_ptr<StreamProfileList> returns the stream profile list
+        * \else
+        * @brief 获取指定传感器的流配置
+        *
+        * @param sensorType 传感器的类型
+        * @return std::shared_ptr<StreamProfileList> 返回流配置列表
+        * \endif
+        */
+        public StreamProfileList GetStreamProfileList(SensorType sensorType)
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_pipeline_get_stream_profile_list(_handle.Ptr, sensorType, ref error);
+            NativeException.HandleError(error);
+            return new StreamProfileList(handle);
+        }
+
+        /**
+        * \if English
+        * @brief Turn on frame synchronization
+        * \else
+        * @brief 打开帧同步功能
+        * \endif
+        *
+        */
+        public void EnableFrameSync()
+        {
+            IntPtr error = IntPtr.Zero;
+            obNative.ob_pipeline_enable_frame_sync(_handle.Ptr, ref error);
+            NativeException.HandleError(error);
+        }
+
+        /**
+        * \if English
+        * @brief Turn off frame synchronization
+        * \else
+        * @brief 关闭帧同步功能
+        * \endif
+        */
+        public void DisableFrameSync()
+        {
+            IntPtr error = IntPtr.Zero;
+            obNative.ob_pipeline_disable_frame_sync(_handle.Ptr, ref error);
+            NativeException.HandleError(error);
+        }
+
+        /**
+        * \if English
+        * @brief Get camera parameters
+        * @attention If D2C is enabled, it will return the camera parameters after D2C, if not, it will return to the default parameters
+        *
+        * @return  OBCameraParam returns camera parameters
+        * \else
+        * @brief 获取相机参数
+        * @attention 如果开启了D2C将返回D2C后的相机参数，如果没有将返回默认参数
+        *
+        * @return  OBCameraParam返回相机参数
+        * \endif
+        */
+        public CameraParam GetCameraParam()
+        {
+            IntPtr error = IntPtr.Zero;
+            CameraParam cameraParam;
+            obNative.ob_pipeline_get_camera_param(out cameraParam, _handle.Ptr, ref error);
+            NativeException.HandleError(error);
+            return cameraParam;
+        }
+
+        public CameraParam GetCameraParamWithProfile(UInt32 colorWidth, UInt32 colorHeight, UInt32 depthWidth, UInt32 depthHeight)
+        {
+            IntPtr error = IntPtr.Zero;
+            CameraParam cameraParam;
+            obNative.ob_pipeline_get_camera_param_with_profile(out cameraParam, _handle.Ptr, colorWidth, colorHeight, depthWidth, depthHeight, ref error);
+            NativeException.HandleError(error);
+            return cameraParam;
+        }
+
+        /**
+        * \if English
+        * @brief Return a list of D2C-enabled depth sensor resolutions corresponding to the input color sensor resolution
+        * @param colorProfile Input color sensor resolution
+        * @param alignMode Input align mode
+        *
+        * @return StreamProfileList returns a list of depth sensor resolutions
+        * \else
+        * @brief 返回与输入的彩色传感器分辨率对应的支持D2C的深度传感器分辨率列表
+        * @param colorProfile 输入的彩色传感器分辨率
+        * @param alignMode 输入的对齐模式
+        *
+        * @return StreamProfileList 返回深度传感器分辨率列表
+        * \endif
+        */
+        public StreamProfileList GetD2CDepthProfileList(StreamProfile colorProfile, AlignMode alignMode)
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr ptr = obNative.ob_get_d2c_depth_profile_list(_handle.Ptr, colorProfile.GetNativeHandle().Ptr, alignMode, ref error);
+            NativeException.HandleError(error);
+            return new StreamProfileList(ptr);
+        }
+
+        /**
+        * \if English
+        * @brief Dynamically switch the corresponding config configuration
+        *
+        * @param config Updated config configuration
+        * \else
+        * @brief 动态切换对应的config配置
+        *
+        * @param config 更新后的config配置
+        * \endif
+        */
+        public void SwitchConfig(Config config)
+        {
+            IntPtr error = IntPtr.Zero;
+            obNative.ob_pipeline_switch_config(_handle.Ptr, config.GetNativeHandle().Ptr, ref error);
+            NativeException.HandleError(error);
+        }
+
+        internal void Delete(IntPtr handle)
+        {
+            IntPtr error = IntPtr.Zero;
+            obNative.ob_delete_pipeline(handle, ref error);
+            NativeException.HandleError(error);
+        }
+
+        public void Dispose()
+        {
+            _handle.Dispose();
+        }
+    }
+}

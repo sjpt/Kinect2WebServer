@@ -1,0 +1,4 @@
+rename Kinect.cs => AllCameras.cs
+add OrbbecSDK.dll, with copy
+add 'orbbec' to server commands
+update orbbec wrapper to net9

@@ -1,0 +1,7 @@
+## Support Platforms
+
+- Windows: Windows 10 (x64), tested with .NET 8
+
+- Linux x64: Tested on Ubuntu 20.04, 22.04, and 24.04, with .NET 8
+
+- Linux ARM64: Tested on NVIDIA Jetson Orin Nano,with .NET 8

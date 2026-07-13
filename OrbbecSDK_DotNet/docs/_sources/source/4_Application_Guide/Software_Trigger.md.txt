@@ -1,0 +1,342 @@
+
+## Software Trigger (435Le)
+
+### Overview
+
+The software trigger mode allows you to control when the camera captures frames programmatically. Instead of continuous streaming, the camera waits for a software command to capture each frame. This is particularly useful for applications requiring precise timing control or synchronized capture across multiple cameras.
+
+**Supported Devices:** 435Le and other cameras that support `OB_MULTI_DEVICE_SYNC_MODE_SOFTWARE_TRIGGERING` mode.
+
+### Check Software Trigger Support
+
+Before using software trigger mode, verify that your device supports it:
+
+```c#
+Device device = deviceList.GetDevice(0);
+
+// Check if device supports software trigger mode (bit 5)
+uint supportedSyncModeBitmap = device.GetSupportedMultiDeviceSyncModeBitmap();
+bool supportsSoftwareTrigger = (supportedSyncModeBitmap & (1 << 5)) != 0;
+
+if (!supportsSoftwareTrigger)
+{
+    Console.WriteLine("Device does not support software trigger mode!");
+    return;
+}
+```
+
+### Configure Software Trigger Mode
+
+Set the device to software trigger mode **before** creating the pipeline:
+
+```c#
+// Get current sync configuration
+var syncConfig = device.GetMultiDeviceSyncConfig();
+Console.WriteLine($"Current sync mode: {syncConfig.syncMode}");
+
+// Set to software trigger mode
+syncConfig.syncMode = MultiDeviceSyncMode.OB_MULTI_DEVICE_SYNC_MODE_SOFTWARE_TRIGGERING;
+syncConfig.framesPerTrigger = 1;  // Number of frames per trigger
+device.SetMultiDeviceSyncConfig(syncConfig);
+
+// Verify configuration
+var verifyConfig = device.GetMultiDeviceSyncConfig();
+Console.WriteLine($"Verified sync mode: {verifyConfig.syncMode}");
+```
+
+**Important:** The sync mode must be set **before** creating the Pipeline, as the pipeline initializes based on the device's current configuration.
+
+### Initialize Pipeline
+
+Create the pipeline after setting the sync mode and enable desired streams:
+
+```c#
+// Create pipeline with device (after setting sync mode)
+Pipeline pipeline = new Pipeline(device);
+
+// Configure streams
+Config config = new Config();
+config.EnableStream(SensorType.OB_SENSOR_COLOR);
+config.EnableStream(SensorType.OB_SENSOR_DEPTH);
+
+// Start pipeline
+pipeline.Start(config);
+```
+
+### Trigger Capture
+
+Use `TriggerCapture()` to capture frames on demand:
+
+```c#
+// Send software trigger command
+device.TriggerCapture();
+Console.WriteLine("Trigger sent");
+
+// Wait for frames
+using var frames = pipeline.WaitForFrames(timeoutMs);
+if (frames != null)
+{
+    // Process color frame
+    using var colorFrame = frames.GetFrame(FrameType.OB_FRAME_COLOR);
+    if (colorFrame != null)
+    {
+        long timestamp = (long)colorFrame.GetTimeStampUs();
+        Console.WriteLine($"Color frame captured - Timestamp: {timestamp}us");
+    }
+
+    // Process depth frame
+    using var depthFrame = frames.GetFrame(FrameType.OB_FRAME_DEPTH);
+    if (depthFrame != null)
+    {
+        long timestamp = (long)depthFrame.GetTimeStampUs();
+        Console.WriteLine($"Depth frame captured - Timestamp: {timestamp}us");
+    }
+}
+```
+
+### Frame Synchronization and Timestamp Validation
+
+When using software trigger mode on 435Le, it's **critical** to verify that the color and depth frames are truly synchronized. The timestamp difference between color and depth frames indicates whether they were captured at the same moment.
+
+**Recommended Maximum Timestamp Difference Calculation:**
+
+OrbbecSDK uses half-frame time as the internal synchronization standard. The recommended threshold depends on your stream frame rate:
+
+```
+MAX_TIMESTAMP_DIFF_US = (1,000,000 / FPS) / 2
+                      = 500,000 / FPS (microseconds)
+```
+
+For example:
+- **10 FPS**: `(1,000,000 / 10) / 2 = 50,000us` (50ms)
+- **15 FPS**: `(1,000,000 / 15) / 2 ≈ 33,333us` (33.3ms)
+- **30 FPS**: `(1,000,000 / 30) / 2 ≈ 16,667us` (16.7ms)
+
+```c#
+// Calculate based on your actual frame rate
+const int FRAME_RATE = 30;  // Your stream frame rate (fps)
+private const long MAX_TIMESTAMP_DIFF_US = 500000 / FRAME_RATE;  // Half-frame time
+private const int MAX_RETRY_COUNT = 5;                              // Maximum retry attempts
+```
+
+**Timestamp Validation Logic:**
+
+```c#
+// Capture both frames
+using var colorFrame = frames.GetFrame(FrameType.OB_FRAME_COLOR);
+using var depthFrame = frames.GetFrame(FrameType.OB_FRAME_DEPTH);
+
+if (colorFrame != null && depthFrame != null)
+{
+    // Get timestamps in microseconds
+    long colorTimestamp = (long)colorFrame.GetTimeStampUs();
+    long depthTimestamp = (long)depthFrame.GetTimeStampUs();
+
+    // Calculate absolute difference
+    long timestampDiff = Math.Abs(colorTimestamp - depthTimestamp);
+    Console.WriteLine($"Timestamp diff: {timestampDiff}us ({timestampDiff / 1000.0:F2}ms)");
+
+    // Validate synchronization
+    if (timestampDiff > MAX_TIMESTAMP_DIFF_US)
+    {
+        Console.WriteLine($"WARNING: Frames NOT synchronized! Diff: {timestampDiff / 1000.0:F2}ms > threshold {MAX_TIMESTAMP_DIFF_US / 1000}ms");
+        // Retry capture or handle unsynchronized frames
+    }
+    else
+    {
+        Console.WriteLine("Frames are properly synchronized");
+        // Process synchronized frames
+    }
+}
+```
+
+### Customizing Synchronization Parameters
+
+You can customize the synchronization validation by modifying these two constants:
+
+| Constant | Default Value | Description |
+|----------|---------------|-------------|
+| `MAX_TIMESTAMP_DIFF_US` | `500000 / FPS` (half-frame time) | Maximum allowed timestamp difference between color and depth frames in microseconds. Calculate based on your frame rate: `(1,000,000 / FPS) / 2`. If exceeded, frames are considered unsynchronized. |
+| `MAX_RETRY_COUNT` | 5 | Maximum number of retry attempts when capture fails or frames are unsynchronized. |
+
+**Adjust based on your requirements:**
+
+```c#
+const int FRAME_RATE = 30;  // 30fps stream
+
+// Strict synchronization (e.g., for 3D reconstruction)
+private const long MAX_TIMESTAMP_DIFF_US = 500000 / FRAME_RATE;  // Half-frame: ~16.7ms
+private const int MAX_RETRY_COUNT = 10;                          // More retries
+
+// Relaxed synchronization (e.g., for preview) - allow up to 1 full frame
+private const long MAX_TIMESTAMP_DIFF_US = 1000000 / FRAME_RATE;  // Full-frame: ~33.3ms
+private const int MAX_RETRY_COUNT = 3;                            // Fewer retries
+```
+
+### Complete Example with Synchronization Check
+
+Here's a complete example showing the software trigger workflow with synchronization validation:
+
+```c#
+using Orbbec;
+using System;
+
+class SoftwareTriggerExample
+{
+    // Frame rate of your stream - adjust this to match your actual configuration
+    const int FRAME_RATE = 30;
+
+    // Synchronization parameters - half-frame time is OrbbecSDK's internal standard
+    // Formula: (1 second in us / FPS) / 2 = 500000 / FPS
+    private const long MAX_TIMESTAMP_DIFF_US = 500000 / FRAME_RATE;  // ~16.7ms for 30fps
+    private const int MAX_RETRY_COUNT = 5;                           // Max retry attempts
+
+    static void Main(string[] args)
+    {
+        using var context = new Context();
+        using var devList = context.QueryDeviceList();
+
+        if (devList.DeviceCount() == 0)
+        {
+            Console.WriteLine("No device found!");
+            return;
+        }
+
+        // Get device
+        using var device = devList.GetDevice(0);
+        using var deviceInfo = device.GetDeviceInfo();
+        Console.WriteLine($"Device: {deviceInfo.Name()}");
+
+        // Check software trigger support
+        uint supportedModes = device.GetSupportedMultiDeviceSyncModeBitmap();
+        if ((supportedModes & (1 << 5)) == 0)
+        {
+            Console.WriteLine("Device does not support software trigger!");
+            return;
+        }
+
+        // Configure software trigger mode BEFORE creating pipeline
+        var syncConfig = device.GetMultiDeviceSyncConfig();
+        syncConfig.syncMode = MultiDeviceSyncMode.OB_MULTI_DEVICE_SYNC_MODE_SOFTWARE_TRIGGERING;
+        syncConfig.framesPerTrigger = 1;
+        device.SetMultiDeviceSyncConfig(syncConfig);
+
+        // Create pipeline after setting sync mode
+        using var pipeline = new Pipeline(device);
+
+        // Enable streams
+        using var config = new Config();
+        config.EnableStream(SensorType.OB_SENSOR_COLOR);
+        config.EnableStream(SensorType.OB_SENSOR_DEPTH);
+        pipeline.Start(config);
+
+        Console.WriteLine($"Press SPACE to trigger capture, ESC to exit.");
+        Console.WriteLine($"Stream: {FRAME_RATE}fps, Max timestamp diff threshold: {MAX_TIMESTAMP_DIFF_US}us (~{MAX_TIMESTAMP_DIFF_US/1000.0:F1}ms, half-frame time)");
+
+        int frameCount = 0;
+        while (true)
+        {
+            var key = Console.ReadKey(true);
+            if (key.Key == ConsoleKey.Spacebar)
+            {
+                bool captureSuccess = false;
+                int attempt = 0;
+
+                // Retry loop for synchronization
+                while (!captureSuccess && attempt < MAX_RETRY_COUNT)
+                {
+                    attempt++;
+                    if (attempt > 1)
+                        Console.WriteLine($"Retry attempt {attempt}/{MAX_RETRY_COUNT}...");
+
+                    // Trigger capture
+                    device.TriggerCapture();
+
+                    // Wait for frames
+                    using var frames = pipeline.WaitForFrames(1000);
+                    if (frames == null)
+                    {
+                        Console.WriteLine("Capture timeout!");
+                        continue;
+                    }
+
+                    // Get both frames
+                    using var colorFrame = frames.GetFrame(FrameType.OB_FRAME_COLOR);
+                    using var depthFrame = frames.GetFrame(FrameType.OB_FRAME_DEPTH);
+
+                    if (colorFrame == null || depthFrame == null)
+                    {
+                        Console.WriteLine("Partial capture: missing frame(s)");
+                        continue;
+                    }
+
+                    // Get timestamps and calculate difference
+                    long colorTs = (long)colorFrame.GetTimeStampUs();
+                    long depthTs = (long)depthFrame.GetTimeStampUs();
+                    long diff = Math.Abs(colorTs - depthTs);
+
+                    Console.WriteLine($"Frame #{++frameCount}:");
+                    Console.WriteLine($"  Color TS: {colorTs}us, Depth TS: {depthTs}us");
+                    Console.WriteLine($"  Timestamp diff: {diff}us ({diff / 1000.0:F2}ms), Threshold: {MAX_TIMESTAMP_DIFF_US}us ({MAX_TIMESTAMP_DIFF_US/1000.0:F1}ms)");
+
+                    // Validate synchronization (half-frame standard)
+                    if (diff > MAX_TIMESTAMP_DIFF_US)
+                    {
+                        Console.WriteLine($"  WARNING: Frames NOT synchronized! Diff > half-frame threshold ({MAX_TIMESTAMP_DIFF_US / 1000.0:F1}ms)");
+                        continue;  // Retry
+                    }
+
+                    Console.WriteLine($"  SUCCESS: Frames are synchronized (within half-frame time)");
+                    captureSuccess = true;
+
+                    // Process synchronized frames here
+                    // ...
+                }
+
+                if (!captureSuccess)
+                {
+                    Console.WriteLine($"ERROR: Failed to capture synchronized frames after {MAX_RETRY_COUNT} attempts!");
+                }
+            }
+            else if (key.Key == ConsoleKey.Escape)
+            {
+                break;
+            }
+        }
+
+        // Cleanup
+        pipeline.Stop();
+
+        // Restore default sync mode (optional)
+        var defaultConfig = device.GetMultiDeviceSyncConfig();
+        defaultConfig.syncMode = MultiDeviceSyncMode.OB_MULTI_DEVICE_SYNC_MODE_STANDALONE;
+        device.SetMultiDeviceSyncConfig(defaultConfig);
+    }
+}
+```
+
+### Important Notes
+
+1. **Timestamp Difference is Critical:** The timestamp difference between color and depth frames is the **key indicator** of frame synchronization on 435Le. Always validate that `timestampDiff <= MAX_TIMESTAMP_DIFF_US` before processing frames. OrbbecSDK uses **half-frame time** as the internal synchronization standard.
+
+2. **Calculate Threshold Based on Frame Rate:** The recommended threshold is calculated as:
+   ```
+   MAX_TIMESTAMP_DIFF_US = 500000 / FPS
+   ```
+   - **10 FPS**: 50ms (half of 100ms frame interval)
+   - **30 FPS**: ~16.7ms (half of ~33.3ms frame interval)
+   - **60 FPS**: ~8.3ms (half of ~16.7ms frame interval)
+
+3. **Customize Synchronization Threshold:** Adjust based on your application's tolerance:
+   - **Strict synchronization** (3D reconstruction, measurement): Use half-frame time (default)
+   - **Relaxed synchronization** (preview): Allow up to 1 full frame time (`1000000 / FPS`)
+
+4. **Retry Mechanism:** Use `MAX_RETRY_COUNT` to automatically retry when frames are not synchronized. Increase for critical applications where synchronized frames are mandatory.
+
+5. **Order Matters:** Set the sync mode **before** creating the Pipeline. The pipeline initializes streams based on the device's current configuration.
+
+6. **Timeout Handling:** The first trigger after starting the pipeline may timeout due to device warmup. The retry loop handles this automatically.
+
+7. **Resource Cleanup:** Always stop the pipeline and restore the default sync mode (Standalone) when exiting to ensure normal operation in subsequent runs.
+
+8. **Multiple Triggers:** Each `TriggerCapture()` call captures one set of frames (as configured by `framesPerTrigger`). Call it repeatedly for continuous capture with timing control.

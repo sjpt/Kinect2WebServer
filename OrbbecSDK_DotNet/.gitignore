@@ -1,0 +1,9 @@
+build/
+doc/
+.vscode/
+.vs/
+out/
+scripts/
+
+[Bb]in/
+[Oo]bj/

@@ -1,0 +1,204 @@
+# OrbbecSDK DotNet Wrapper Compilation
+
+This document describes how to set up the development environment and compile the Orbbec OrbbecSDK DotNet Wrapper on supported platforms.
+
+## Environment
+
+This section outlines the required development environment, including supported operating systems, compilers, and .NET versions needed to build the OrbbecSDK DotNet Wrapper.
+
+### Compilation Platform Requirements
+
+- Windows: 
+  - Architecture: x64
+  - Toolchain: Visual Studio 2022 and above
+- Linux(x64/arm64): 
+  - Architecture: x64(amd64), arm64(aarch64)
+  - Toolchain: gcc 7.5.0 and above
+
+### .NET Version
+
+- .NET 8.0 and above
+
+> **Note**  
+> All build and run examples in this document use **.NET 8.0** as the reference version.  
+> On **Windows**, building projects targeting **.NET 8.0 or above** requires  
+> **Visual Studio 2022 or later**.
+
+## Linux OrbbecSDK DotNet Wrapper Compilation
+
+This section provides a comprehensive guide to installing, compiling, and running the Orbbec SDK for C#, covering all necessary steps for setup.
+
+- Contents:
+
+  - Install Dependencies
+  - Build the Project
+  - Run the Examples
+  - Optional: Generate the Project Using a Script
+
+Clone the repository to get the latest version:
+
+```basha
+git clone https://github.com/orbbec/orbbecsdk_dotnet.git
+cd orbbecsdk_dotnet
+git checkout v2-main
+```
+
+### Install Dependencies (Ubuntu)
+
+Install the necessary .NET development packages
+
+```bash
+sudo apt-get install dotnet-sdk-8.0
+```
+
+### Build the Project
+
+Build the project:
+
+```bash
+cd orbbecsdk_dotnet/samples/1.stream.color
+dotnet build
+```
+> **Note**  
+> By default, `dotnet build` compiles the project in **Debug** configuration.
+> To build the **Release** version, specify the configuration explicitly:
+
+```bash
+dotnet build -c Release
+```
+
+
+### Run the Examples
+
+Run the examples:
+
+```bash
+cd orbbecsdk_dotnet
+cd ./samples/1.stream.color/bin/Debug/net8.0/
+dotnet ./Samples.Color.dll
+```
+
+### Optional: Generate the Project Using a Script
+
+You can also generate the project files using a script.
+Use the `build_samples.sh` script.
+
+![compile-7.png](../image/compile-7.png)
+
+A new build directory will be created automatically, and all generated project files
+will be placed inside this directory.
+
+This approach keeps generated files separate from the source code.
+
+![compile-8.png](../image/compile-8.png)
+
+## Windows OrbbecSDK DotNet Wrapper Compilation
+
+This section provides a comprehensive guide to installing, compiling, and running the Orbbec SDK for C#, covering all necessary steps for setup.
+
+- Contents:
+
+  - Install Dependencies (Ubuntu)
+  - Build the Project and Run the Examples
+  - Optional: Generate the Project Using a Script
+
+Clone the repository to get the latest version:
+
+```bash
+git clone https://github.com/orbbec/orbbecsdk_dotnet.git
+cd orbbecsdk_dotnet
+git checkout v2-main
+```
+
+### Install Dependencies
+
+Install the necessary .NET development packages
+
+- Download the official installer from Microsoft:
+  https://dotnet.microsoft.com/en-us/download/dotnet/8.0
+- Run the installer and follow the on-screen instructions.
+- After installation, verify that .NET is installed correctly by running:
+
+```powershell
+dotnet --version
+```
+
+### Build the Project and Run the Examples
+
+#### Step 1: Open the Visual Studio Project
+
+Use the file explorer to directly start the Visual Studio project in the build directory, as shown in the following figure:
+
+![compile-1.png](../image/compile-1.png)
+
+#### Step 2: Build the Project in Release Mode
+
+After opening the project in Visual Studio:
+
+- Select **Release** configuration from the toolbar.
+- In the **Solution Explorer**, right-click **OrbbecSharp** and select **Rebuild**.
+- Then, right-click **samples** and select **Rebuild**.
+
+![compile-2.png](../image/compile-2.png)
+
+![compile-3.png](../image/compile-3.png)
+
+![compile-4.png](../image/compile-4.png)
+
+
+#### Step 3: Locate the Compiled Samples
+
+**Each sample** is now built into **its own output directory**.
+For example, the `color` sample executable can be found at:
+```text
+orbbecsdk_dotnet/samples/1.stream.color/bin/Release/net8.0/
+```
+
+![compile-5.png](../image/compile-5.png)
+
+#### Step 4: Run a Sample
+
+Click on **Samples.Color.exe**, and the running result is as follows
+
+![compile-6.png](../image/compile-6.png)
+
+### Optional: Generate the Project Using a Script
+
+You can also generate the project files using a script.
+Use the `build_samples.ps1` script.
+
+![compile-12.png](../image/compile-12.png)
+
+A new build directory will be created automatically, and all generated project files
+will be placed inside this directory.
+
+This approach keeps generated files separate from the source code.
+
+![compile-13.png](../image/compile-13.png)
+
+## Build Executable Binaries(Windows/Linux)
+
+Use the following command to publish the project and generate executable binaries:
+
+### Linux x64
+
+```bash
+cd orbbecsdk_dotnet
+dotnet publish -c Release -r linux-x64 -p:DebugType=none -p:PublishSingleFile=true  
+```
+
+### Linux ARM64
+
+```bash
+cd orbbecsdk_dotnet
+dotnet publish -c Release -r linux-arm64 -p:DebugType=none -p:PublishSingleFile=true  
+```
+
+### Windows
+
+```powershell
+cd orbbecsdk_dotnet
+dotnet publish -c Release -r win-x64 -p:DebugType=none -p:PublishSingleFile=true  
+```
+> **Note**
+> The published executable can be found in /orbbecsdk_dotnet/bin/.

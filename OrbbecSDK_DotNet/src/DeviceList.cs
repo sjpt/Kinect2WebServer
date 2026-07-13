@@ -1,0 +1,356 @@
+using System;
+using System.Runtime.InteropServices;
+
+namespace Orbbec
+{    
+    public class DeviceList : IDisposable
+    {
+        private NativeHandle _handle;
+
+        internal DeviceList(IntPtr handle)
+        {
+            _handle = new NativeHandle(handle, Delete);
+        }
+
+        /**
+        * \if English
+        * @brief Get device count
+        *
+        * @return UInt32 returns the number of devices
+        * \else
+        * @brief 获取设备数量
+        *
+        * @return UInt32 返回设备的数量
+        * \endif
+        */
+        public UInt32 DeviceCount()
+        {
+            IntPtr error = IntPtr.Zero;
+            UInt32 count = obNative.ob_device_list_get_count(_handle.Ptr, ref error);
+            NativeException.HandleError(error);
+            return count;
+        }
+
+        /**
+        * \if English
+        * @brief Get the name of the specified device (DEPRECATED)
+        *
+        * @param index Device index
+        * @return String returns the name of the device
+        * \else
+        * @brief 获取指定设备的名称 (废弃接口)
+        *
+        * @param index 设备索引
+        * @return String 返回设备的名称
+        * \endif
+        */
+        public String Name(UInt32 index)
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr ptr = obNative.ob_device_list_get_device_name(_handle.Ptr, index, ref error);
+            NativeException.HandleError(error);
+            return Marshal.PtrToStringAnsi(ptr);
+        }
+
+        /**
+        * \if English
+        * @brief Get the pid of the specified device
+        *
+        * @param index Device index
+        * @return int returns the pid of the device
+        * \else
+        * @brief 获取指定设备的pid
+        *
+        * @param index 设备索引
+        * @return int 返回设备的pid
+        * \endif
+        */
+        public int Pid(UInt32 index)
+        {
+            IntPtr error = IntPtr.Zero;
+            int pid = obNative.ob_device_list_get_device_pid(_handle.Ptr, index, ref error);
+            NativeException.HandleError(error);
+            return pid;
+        }
+
+        /**
+        * \if English
+        * @brief Get the vid of the specified device
+        *
+        * @param index Device index
+        * @return int returns the vid of the device
+        * \else
+        * @brief 获取指定设备的vid
+        *
+        * @param index 设备索引
+        * @return int 返回设备的vid
+        * \endif
+        */
+        public int Vid(UInt32 index)
+        {
+            IntPtr error = IntPtr.Zero;
+            int vid = obNative.ob_device_list_get_device_vid(_handle.Ptr, index, ref error);
+            NativeException.HandleError(error);
+            return vid;
+        }
+
+        /**
+        * \if English
+        * @brief Get the uid of the specified device
+        *
+        * @param index Device index
+        * @return String returns the uid of the device
+        * \else
+        * @brief 获取指定设备的uid
+        *
+        * @param index 设备索引
+        * @return String 返回设备的uid
+        * \endif
+        */
+        public String Uid(UInt32 index)
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr ptr = obNative.ob_device_list_get_device_uid(_handle.Ptr, index, ref error);
+            NativeException.HandleError(error);
+            return Marshal.PtrToStringAnsi(ptr);
+        }
+
+        /**
+        * \if English
+        * @brief Get the serial number of the specified device
+        *
+        * @param index device index
+        * @return String returns the serial number of the device
+        * \else
+        * @brief 获取指定设备的序列号
+        *
+        * @param index 设备索引
+        * @return String 返回设备的序列号
+        * \endif
+        */
+        public String SerialNumber(UInt32 index)
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_device_list_get_device_serial_number(_handle.Ptr, index, ref error);
+            NativeException.HandleError(error);
+            return Marshal.PtrToStringAnsi(handle);
+        }
+
+        public String ConnectionType(UInt32 index)
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_device_list_get_device_connection_type(_handle.Ptr, index, ref error);
+            NativeException.HandleError(error);
+            return Marshal.PtrToStringAnsi(handle);
+        }
+
+        public String IPAddress(UInt32 index)
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_device_list_get_device_ip_address(_handle.Ptr, index, ref error);
+            NativeException.HandleError(error);
+            return Marshal.PtrToStringAnsi(handle);
+        }
+
+        /**
+        * \if English
+        * @brief Get device subnet mask
+        *
+        * @return String The device subnet mask, such as "255.255.255.0"
+        * \else
+        * @brief 获取设备子网掩码
+        *
+        * @return String 设备子网掩码，例如“255.255.255.0”
+        * \endif
+        */
+        public string? GetSubnetMask(uint index)
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_device_list_get_device_subnet_mask(_handle.Ptr, index, ref error);
+            NativeException.HandleError(error);
+            return Marshal.PtrToStringAnsi(handle);
+        }
+
+        /**
+        * \if English
+        * @brief Get device gateway
+        *
+        * @return String The device gateway, such as "192.168.1.1"
+        * \else
+        * @brief 获取设备网关
+        *
+        * @return String 设备网关，例如“192.168.1.1”
+        * \endif
+        */
+        public string? GetGateway(uint index)
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_device_list_get_device_gateway(_handle.Ptr, index, ref error);
+            NativeException.HandleError(error);
+            return Marshal.PtrToStringAnsi(handle);
+        }
+
+        /**
+        * \if English
+        * @brief Get device local mac address
+        * 
+        * @attention Only valid for network devices, otherwise it will return "0:0:0:0:0:0".
+        *
+        * @param index Device index
+        * @return const char* returns the device mac address
+        * \else
+        * @brief 获取指定设备的本地mac地址
+        *
+        * @param index 设备索引
+        * @return String 返回设备的序列号
+        * \endif
+        */
+        public string LocalMac(UInt32 index)
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_device_list_get_device_local_mac(_handle.Ptr, index, ref error);
+            NativeException.HandleError(error);
+            return Marshal.PtrToStringAnsi(handle);
+        }
+
+        /**
+        * \if English
+        * @brief Get the IP address of the host network interface corresponding to the network device
+        *
+        * @return String The IP address of the host network interface associated with the device
+        * \else
+        * @brief 获取网络设备对应的主机网络接口的IP地址
+        *
+        * @return String 与设备关联的主机网络接口的IP地址
+        * \endif
+        */
+        public string? GetLocalIp(uint index)
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_device_list_get_device_local_ip(_handle.Ptr, index, ref error);
+            NativeException.HandleError(error);
+            return Marshal.PtrToStringAnsi(handle);
+        }
+
+        /**
+        * \if English
+        * @brief Get the subnet length of the host network interface corresponding to the network device
+        *
+        * @return byte The subnet length (0~32) of the host network interface associated with the device
+        * \else
+        * @brief 获取网络设备对应的主机网络接口的子网长度
+        *
+        * @return byte 与设备关联的主机网络接口的子网长度（0~32）
+        * \endif
+        */
+        public byte GetLocalSubnetLength(uint index)
+        {
+            IntPtr error = IntPtr.Zero;
+            byte length = obNative.ob_device_list_get_device_local_subnet_length(_handle.Ptr, index, ref error);
+            NativeException.HandleError(error);
+            return length;
+        }
+
+        /**
+        * \if English
+        * @brief Get the gateway of the host network interface corresponding to the network device
+        *
+        * @return String The gateway of the host network interface associated with the device
+        * \else
+        * @brief 获取网络设备对应的主机网络接口的网关
+        *
+        * @return String 与设备关联的主机网络接口的网关
+        * \endif
+        */
+        public string? GetLocalGateway(uint index)
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_device_list_get_device_local_gateway(_handle.Ptr, index, ref error);
+            NativeException.HandleError(error);
+            return Marshal.PtrToStringAnsi(handle);
+        }
+
+        public String ExtensionInfo(UInt32 index)
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_device_info_get_extension_info(_handle.Ptr, index, ref error);
+            NativeException.HandleError(error);
+            return Marshal.PtrToStringAnsi(handle);
+        }
+
+        /**
+        * \if English
+        * @brief Get the specified device object from the device list
+        * @attention If the device has been acquired and created elsewhere, repeated acquisition will throw an exception
+        * @param index index of the device to create
+        * @return Device returns the device object
+        * \else
+        * @brief 从设备列表中获取指定设备对象,
+        * @attention 如果设备有在其他地方被获取创建，重复获取将会抛异常
+        * @param index 要创建设备的索引
+        * @return Device 返回设备对象
+        * \endif
+        */
+        public Device GetDevice(UInt32 index)
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_device_list_get_device(_handle.Ptr, index, ref error);
+            NativeException.HandleError(error);
+            return new Device(handle);
+        }
+
+        /**
+        * \if English
+        * @brief Get the specified device object from the device list
+        * @attention If the device has been acquired and created elsewhere, repeated acquisition will throw an exception
+        * @param serialNumber The serial number of the device to be created
+        * @return Device returns the device object
+        * \else
+        * @brief 从设备列表中获取指定设备对象
+        * @attention 如果设备有在其他地方被获取创建，重复获取将会抛异常
+        * @param serialNumber 要创建设备的序列号
+        * @return Device 返回设备对象
+        * \endif
+        */
+        public Device GetDeviceBySN(String serialNumber)
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_device_list_get_device_by_serial_number(_handle.Ptr, serialNumber, ref error);
+            NativeException.HandleError(error);
+            return new Device(handle);
+        }
+
+        /**
+        * \if English
+        * @brief Get the specified device object from the device list
+        * @attention If the device has been acquired and created elsewhere, repeated acquisition will throw an exception
+        * @param uid If the device has been acquired and created elsewhere, repeated acquisition will throw an exception
+        * @return Device If the device has been acquired and created elsewhere, repeated acquisition will throw an exception
+        * \else
+        * @brief 从设备列表中获取指定设备对象
+        * @attention 如果设备有在其他地方被获取创建，重复获取将会抛异常
+        * @param uid 要创建设备的uid
+        * @return Device 返回设备对象
+        * \endif
+        */
+        public Device GetDeviceByUid(String uid)
+        {
+            IntPtr error = IntPtr.Zero;
+            IntPtr handle = obNative.ob_device_list_get_device_by_uid(_handle.Ptr, uid, ref error);
+            NativeException.HandleError(error);
+            return new Device(handle);
+        }
+
+        internal void Delete(IntPtr handle)
+        {
+            IntPtr error = IntPtr.Zero;
+            obNative.ob_delete_device_list(handle, ref error);
+            NativeException.HandleError(error);
+        }
+
+        public void Dispose()
+        {
+            _handle.Dispose();
+        }
+    }
+}

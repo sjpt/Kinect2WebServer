@@ -1,11 +1,12 @@
 ﻿#pragma warning disable IDE0040, IDE0049, CA1805, CA1304, CA1305, IDE0008, IDE0055, IDE0058, IDE0048, IDE0011
 
-// generic program to manage different CaptureDevices
+// generic program to manage different CaptureDevices, 
 using Microsoft.Kinect;
 using System;
 using System.IO;
 using IWebSocketConnection = Fleck.IWebSocketConnection;
 using System.Numerics;
+
 
 namespace Kinect2WebServer {
 
@@ -32,6 +33,7 @@ namespace Kinect2WebServer {
         static readonly ICaptureDevice azure = new Azure();
         static readonly ICaptureDevice kinect2 = new Kinect2();
         static readonly ICaptureDevice zed = new ZED();     // commented out, Stephen 21 Dec 2023, readded 15 June 2024
+        static readonly ICaptureDevice orbbec = new OrbbecX();     // commented out, Stephen 21 Dec 2023, readded 15 June 2024
         protected static ICaptureDevice activeDevice = null;
 
         // static Nicrosoft.Kinect.KinectSensor k1sensor = Nicrosoft.Kinect.KinectSensor.KinectSensors.SingleOrDefault();

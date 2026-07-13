@@ -256,6 +256,7 @@ namespace Kinect2WebServer {
                         { "kbest", () => { Close(); if (bestAzure) {socket.Send("kbest k4"); azure.Init(message, socket); } else {socket.Send("kbest k2"); kinect2.Init(message, socket);} } },
                         { "k2", () => { Close(); kinect2.Init(message, socket); } },
                         { "k4", () => { Close(); azure.Init(message, socket); } },
+                        { "orbbec", () => { Close(); orbbec.Init(message, socket); } },
                         { "zed", () => { Close(); zed.Init(message, socket); } },  // commented out Stephen 21 Dev 2023, readded 15 June 2024
                         // { "azure", () => { AzureInit(message, socket); } },
                         { "get", () => { AcquireSendData(socket, message); } },

@@ -125,6 +125,7 @@ namespace Kinect2WebServer {
         }
 
         static bool bestAzure; // , bestK2;
+        // static bool bestOrbbec; 
         static void Main() {
             // Thread.CurrentThread.Name = "Main";
             Console.CancelKeyPress += Exit;
@@ -132,6 +133,14 @@ namespace Kinect2WebServer {
             AppDomain.CurrentDomain.ProcessExit += Exit;
 
             // bool zok = ZED.makeZedCamera(); // note, this is slow if no camera available
+            //try {
+            //    bestOrbbec = orbbec.Init("Main", null);     // test for Azure software
+            //} catch (Exception e) {
+            //    CWriteLine("Orbbec init error", ConsoleColor.Red);
+            //    CWriteLine(e.ToString());
+            //}
+
+
             try {
                 bestAzure = azure.Init("Main", null);     // test for Azure software
             } catch (Exception e) {

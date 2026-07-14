@@ -32,7 +32,7 @@ namespace Kinect2WebServer {
             //AzureConfig.SynchronizedImagesOnly = true;
             //AzureDevice.Start Cameras(AzureConfig);
             // https://docs.microsoft.com/en-us/azure/kinect-dk/hardware-specification
-            // DEPTH CAMERA SUPPORTED OPERATING MODES
+            // DEPTH CAMERA SUPPORTED OPERATING MODES   
             // Mode    Resolution FoI FPS Operating range* Exposure time
             // NFOV unbinned	        640x576	    75°x65°	    0, 5, 15, 30	0.5 - 3.86 m	12.8 ms
             // NFOV 2x2 binned(SW)      320x288	    75°x65°	    0, 5, 15, 30	0.5 - 5.46 m	12.8 ms
@@ -213,7 +213,7 @@ namespace Kinect2WebServer {
         // Depth may be provided outside of the operating range indicated above.
         // It depends on an object's reflectivity.
         public bool Init(string message, IWebSocketConnection socket) {
-            CWriteLine("Azure.Init()");
+            CWriteLine("Azure.Init() " + message);
             width = height = 0;
             AzureDepthMode = message;
             _lastAzuremsfr = "UNDEF";

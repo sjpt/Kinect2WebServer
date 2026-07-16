@@ -1,10 +1,11 @@
-﻿using System;
-using Microsoft.Azure.Kinect.Sensor;
-using IWebSocketConnection = Fleck.IWebSocketConnection;
-using System.Numerics;
+﻿using Microsoft.Azure.Kinect.Sensor;
 using Microsoft.Kinect;
-using System.Threading;
+// using Orbbec;
+using System;
 using System.Net.Sockets;
+using System.Numerics;
+using System.Threading;
+using IWebSocketConnection = Fleck.IWebSocketConnection;
 #pragma warning disable IDE0011 // Add braces
 
 #pragma warning disable IDE0130 // Namespace does not match folder structure
@@ -20,9 +21,47 @@ namespace Kinect2WebServer {
         private Device AzureDevice;
         private string AzureDepthMode;
         private bool AzureCamerasStarted;  // = false;
+        private Thread drainThread;
+
 
         public string Type() { return "Azure"; }
 
+        /** test loop to drain captures as fast as possible, help check memory leaks */
+        public void Drainloop(uint n = uint.MaxValue) {
+            var bytesBefore = GC.GetTotalAllocatedBytes();
+            double st = Now();
+            Thread.CurrentThread.Priority = ThreadPriority.Highest;
+            // while (drainThread != null) {
+            try {
+                for (var i = 0; i < n; i++) {
+                    if (!AzureCamerasStarted) break;
+                    using (var capture = AzureDevice.GetCapture()) { };   // to get Dispose
+                } 
+            } catch { CWriteLine("error caught so finishing drain thread"); }
+            double dt = Now() - st;
+            var bytesDelta = GC.GetTotalAllocatedBytes() - bytesBefore;
+            CWriteLine($"drainloop delta={bytesDelta:0,000,000}, bytedPerFrame={bytesDelta/n}, dt={dt/1000:#,##0.000}, fps={(n * 1000.0 / dt):0.000}");
+        }
+
+        
+        // unused drain loop to attempt to find/patch memory leaks
+        //private void startDrain() { 
+        //    return;
+        //    if (drainThread != null) return;
+
+        //    drainThread = new Thread(() => Drainloop());
+        //    drainThread.IsBackground = true;
+        //    drainThread.Priority = ThreadPriority.Highest;
+        //    drainThread.Start();
+        //}
+        
+        //private void stopDrain() {
+        //    if (drainThread == null) return;
+        //    drainThread.Join();
+        //    drainThread = null;
+        //}
+
+        private static bool imurunning = false;
 
         public void NewmsfrI(IWebSocketConnection socket, string k = "depth infrared") {
             //// https://docs.microsoft.com/en-us/azure/kinect-dk/retrieve-images
@@ -47,8 +86,7 @@ namespace Kinect2WebServer {
                 CWriteLine(s);
             }
             if (_lastAzuremsfr != k + AzureDepthMode) {
-                AzureDevice.StopCameras(); AzureDevice.StopImu();
-                AzureCamerasStarted = false;
+                Close();
             }
             AzureConfig = new();
             fovx = 75; fovy = 65; // TODO set properly
@@ -61,11 +99,16 @@ namespace Kinect2WebServer {
             if (AzureDepthMode.Contains("ir")) { dm = DepthMode.PassiveIR; fovx = fovy = 120; }
             AzureConfig.DepthMode = dm;
             AzureConfig.CameraFPS = dm == DepthMode.WFOV_Unbinned ? FPS.FPS15 : FPS.FPS30;
-            AzureConfig.ColorResolution = ColorResolution.Off; // .R720p;
+            AzureConfig.ColorResolution = ColorResolution.Off; // R720p; // .R720p;  ?? OFF
             AzureConfig.ColorFormat = ImageFormat.ColorYUY2;   // ColorBGRA32; bgra need extra camera processing, ???YUY2 will need buffer size changes???
+            AzureConfig.SynchronizedImagesOnly = false;
+            AzureConfig.WiredSyncMode = WiredSyncMode.Standalone;
 
-            //AzureCalibration.DepthMode = AzureConfig.DepthMode;
-            //AzureCalibration.ColorResolution = AzureConfig.ColorResolution;
+            // test tweaks
+            //AzureConfig.ir
+            //AzureConfig.ColorResolution = ColorResolution.R720p; // .R720p;  ?? OFF
+            //AzureConfig.DepthMode = DepthMode.Off;
+
 
             if (k.Contains("body")) ee("body");
             if (k.Contains("color")) ee("color");
@@ -76,8 +119,9 @@ namespace Kinect2WebServer {
                 AzureDevice.StartCameras(AzureConfig);
                 AzureCalibration = AzureDevice.GetCalibration();
                 AzureCamerasStarted = true;
+                // startDrain();
                 CWriteLine("newmsfr Azure cameras started: " + k);
-                AzureDevice.StartImu();
+                // AzureDevice.StartImu(); imurunning = true;
             }
             Capture cap = AzureDevice.GetCapture();
             _firstCapture = true;
@@ -85,6 +129,7 @@ namespace Kinect2WebServer {
             if (depthcap == null) depthcap = cap.IR;
             if (depthcap != null) {
                 width = depthcap.WidthPixels; height = depthcap.HeightPixels;
+                depthcap.Dispose();
             } else {
                 width = height = 1;
             }
@@ -92,6 +137,7 @@ namespace Kinect2WebServer {
             if (colourcap != null) {
                 colWidth = colourcap.WidthPixels; colHeight = colourcap.HeightPixels;
                 colBytesPerPixel = (int)colourcap.Size / (colWidth * colHeight);
+                colourcap.Dispose();
             } else {
                 colWidth = colHeight = colBytesPerPixel = 1;
             }
@@ -100,8 +146,8 @@ namespace Kinect2WebServer {
             CWriteLine($"Azure size setup ok, w={width} h={height}, colw={colWidth} colh={colHeight}");
 
             _lastAzuremsfr = k + AzureDepthMode;
-
-
+            
+            cap.Dispose();
         }
 
         public bool OpenI() {
@@ -110,12 +156,18 @@ namespace Kinect2WebServer {
         }
 
         public void CloseI() {
-            if (AzureDevice != null) { AzureDevice.StopCameras(); AzureDevice.StopImu(); AzureCamerasStarted = false; } // is Azure = false; } // AzureDevice.Dispose(); AzureDevice = null;
+            if (AzureDevice == null) return;
+            AzureDevice.StopCameras();
+            AzureDevice.StopImu(); imurunning = false;
+
+            AzureCamerasStarted = false; 
+            //stopDrain();
         }
 
         private Capture AzureFrame;
 
         public bool GetCapture() {
+            if (AzureFrame != null) AzureFrame.Dispose();
             AzureFrame = AzureDevice.GetCapture();
             return AzureFrame != null;
         }
@@ -137,6 +189,8 @@ namespace Kinect2WebServer {
             // handle Azure specific noise, values above the 'sensible' region
             for (int i = 0; i < DepthArr.Length; i++) if (DepthArr[i] > 8000)
                     DepthArr[i] = 0;
+            depthCap.Dispose();
+            // does not exist depthPixels.Dispose();
             return true;
         }
 
@@ -145,6 +199,7 @@ namespace Kinect2WebServer {
             if (ir == null) return false;
             Memory<ushort> irPixels = ir.GetPixels<ushort>();
             irPixels.CopyTo(InfraredArr);
+            ir.Dispose();
             return true;
         }
 
@@ -199,6 +254,8 @@ namespace Kinect2WebServer {
                     //RGBArr[i++] = v;
                 }
             }
+            col.Dispose();
+            dep.Dispose();
 
             // AzureCalibration.
             return true;
@@ -249,6 +306,7 @@ namespace Kinect2WebServer {
         }
 
         public Vector3 Accel() {
+            if (!imurunning) return Vector3.Zero;
             try {
                 ImuSample imu = AzureDevice.GetImuSample(TimeSpan.FromMilliseconds(1));
                 Vector3 acc = imu.AccelerometerSample;
@@ -256,6 +314,24 @@ namespace Kinect2WebServer {
             } catch (Exception) {
                 return Vector3.Zero;
             }
+        }
+
+        // startimu, collect data and stop imu. needed because of memory leaks when imu left running
+        public Vector3 PingAccel(uint t = 500) {
+            AzureDevice.StartImu();
+            ImuSample sample;
+            Vector3 acc;
+            try
+            {
+                sample = AzureDevice.GetImuSample(TimeSpan.FromMilliseconds(t)); // generous timeout, this is infrequent
+                acc = sample.AccelerometerSample;
+                // use sample
+            }
+            finally
+            {
+                AzureDevice.StopImu();
+            }
+            return acc;
         }
 
         static private float[] _calib = new float[1];  // cache of XY values for calibration

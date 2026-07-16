@@ -80,7 +80,7 @@ namespace Kinect2WebServer {
         static double raysPerSlotx, raysPerSloty, raysPerSlotxy; // rays per core slot at one m
 
         static bool flowReport = false;     // true to send status messages back to client
-        static string lastMessage = "no message so far";    // last message received, typically message currently being processed
+        static string lastMessage = "no messageSL so far";    // last messageSL received, typically messageSL currently being processed
                                                     // this will need to change when we give further away items more priority
         static int callnum = 0;
         static List<string> stagelist = new();
@@ -90,9 +90,9 @@ namespace Kinect2WebServer {
         static void Stage(string k, bool done = false) {
             double t = Now();
             string dd = done ? "done" : "";
-            stagelist.Add($"{k} {dd} @{t} dt{t - laststage}");
+            stagelist.Add($"{k} {dd} @{t} dt = {t - laststage:#,##0.000}");
             if (done) {
-                stagelist.Add($">>{k} @{t} dt{t - startstage[k]}");
+                stagelist.Add($">>{k} @{t} dt = {t - startstage[k]:#,##0.000}");
             }
             laststage = t;
             startstage[k] = t;
@@ -101,9 +101,9 @@ namespace Kinect2WebServer {
             Stage(k, true);
         }
 
-        static double Now() { return (DateTime.Now - new DateTime(1970, 1, 1)).TotalMilliseconds; }
+        public static double Now() { return (DateTime.Now - new DateTime(1970, 1, 1)).TotalMilliseconds; }
 
-        static bool _debug = false;
+        static protected bool _debug = false;
         static void Debug(string msg) {
             if (_debug)
                 CWriteLine(msg);
@@ -171,7 +171,7 @@ namespace Kinect2WebServer {
                     IWebSocketConnection socket = _clients.Count == 0 ? null : _clients[^1]; // [^1] gets last
                     DoMessage(l, socket);
                 } catch(Exception e) {
-                    CWriteLine("Exception attempting message " + l + e);
+                    CWriteLine("Exception attempting messageSL " + l + e);
 
                 }
             }

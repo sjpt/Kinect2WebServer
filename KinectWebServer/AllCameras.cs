@@ -32,7 +32,7 @@ namespace Kinect2WebServer {
     partial class Program {
 
 
-        static readonly ICaptureDevice azure = new Azure();
+        static readonly Azure azure = new Azure();
         static readonly ICaptureDevice kinect2 = new Kinect2();
         static readonly ICaptureDevice zed = new ZED();     // commented out, Stephen 21 Dec 2023, readded 15 June 2024
         static readonly ICaptureDevice orbbec = new OrbbecX();     // commented out, Stephen 21 Dec 2023, readded 15 June 2024
@@ -74,7 +74,7 @@ namespace Kinect2WebServer {
             Send(socket, $"kinsize {width} {height} {coreStepn} {coreWidth} {coreHeight}");
         }
 
-        /** acquire data and send back to socket, may be multiple sources depending on the get message arguments */
+        /** acquire data and send back to socketSL, may be multiple sources depending on the get messageSL arguments */
         static void AcquireSendData(IWebSocketConnection socket, string message) {
             if (activeDevice == null) return;
             Stage("SendData");
@@ -82,10 +82,11 @@ namespace Kinect2WebServer {
             if (DepthArr == null) { 
                 // CWriteLine("premature get/AcquireSendData ignored");
                 Send(socket, $"#flowdone kind_not_ready time {depthTime} delta {timeDelta}");
+                
                 return;
             }
 
-            if (socket == null) CWriteLine("attempt to SendData to non-socket");
+            if (socket == null) CWriteLine("attempt to SendData to non-socketSL");
             void report(string tag) {
                 if (flowReport && socket != null) Send(socket, "#" + tag);
             }
@@ -103,8 +104,8 @@ namespace Kinect2WebServer {
             Stage("AcquiredLatestFrame");
             callnum++;
             //always get depth and infrared
-            //if (message.Contains("depth") || message.Contains("core") || message.Contains("depthsingle") || message.Contains("grid")) depthok = GetDepthData(k2frame, AzureFrame);
-            //if (message.Contains("infrared")) infraredok = GetInfrared(k2frame, AzureFrame);
+            //if (messageSL.Contains("depth") || messageSL.Contains("core") || messageSL.Contains("depthsingle") || messageSL.Contains("grid")) depthok = GetDepthData(k2frame, AzureFrame);
+            //if (messageSL.Contains("infrared")) infraredok = GetInfrared(k2frame, AzureFrame);
             depthok = activeDevice.GetDepthData();
             infraredok = activeDevice.GetInfrared();
             if (message.Contains("skel")) skelok = activeDevice.GetSkeleton();    // when we have skeleton/colour/index working for Azure add AzureFrame as secon d parameter

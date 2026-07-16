@@ -1,10 +1,12 @@
 ﻿// #pra gma warning disable IDE0040, IDE0049, CA1805, CA1304, CA1305, IDE0008, IDE0055, IDE0058, IDE0048, IDE0011
 
+using Fleck;
+using MathNet.Numerics.Statistics;
 using System;
 using System.Collections.Generic;
-using Fleck;
-using System.Text.Json;
+using System.Net.Sockets;
 using System.Numerics;
+using System.Text.Json;
 
 
 //using System.Linq;
@@ -112,178 +114,7 @@ namespace Kinect2WebServer {
             Send(socket, fl, l * 3);
         }
 
-        static readonly object _locker = new();
-
-        /** handle request message from client */
-        static void DoMessage(string messages, IWebSocketConnection socket) {
-           lock(_locker) {
-                stagelist = new();
-                Stage("#stages");
-                Stage("domessage " + messages);
-                string[] ss = messages.Split("!!");
-                foreach (string message in ss)
-                    oneMessage(message);
-
-                StageEnd("domessage " + messages);
-                if (socket != null) Send(socket, String.Join(", ", stagelist)); else CWriteLine(String.Join("\n", stagelist));
-
-                void oneMessage(string message) {
-                    try {
-                        message = message.ToLower().Trim();
-                        var args = message.Split(' ');
-                        int alen = args.Length;
-                        if (alen == 0) return;
-                        string argv = "";
-                        bool hasarg = false;
-                        if (args.Length > 1) {
-                            argv = args[alen - 1]; // cheat way to skip options =, eg in 'xx = 5'
-                            hasarg = true;
-                        }
-                        string name = args[0].ToLower();
-
-                        // query a variable, and if a new value given set it
-                        // would like to have made this more generic, but can't quite see how
-                        void qseti(ref int value) {
-                            string r = $"{name} = {value}";
-                            if (hasarg) r += $" => {value = int.Parse(argv)}";
-                            CWriteLine(r); if (socket != null) socket.Send("= " + r);
-                        }
-                        void qsetus(ref ushort value) {
-                            string r = $"{name} = {value}";
-                            if (hasarg) r += $" => {value = ushort.Parse(argv)}";
-                            CWriteLine(r); if (socket != null) socket.Send("= " + r);
-                        }
-                        void qsetf(ref float value) {
-                            string r = $"{name} = {value}";
-                            if (hasarg) r += $" => {value = float.Parse(argv)}";
-                            CWriteLine(r); if (socket != null) socket.Send("= " + r);
-                        }
-                        void qsetb(ref bool value) {
-                            string r = $"{name} = {value}";
-                            if (hasarg) r += $" => {value = bool.Parse(argv)}";
-                            CWriteLine(r); if (socket != null) socket.Send("= " + r);
-                        }
-                        void qsetmm(ref Matrix4x4 value) {
-                            string r = $"{name} = \n{value}";
-                            if (hasarg) {
-                                if (args.Length == 17) {
-                                    float[] e = new float[16]; for (int i = 0; i < 16; i++) e[i] = float.Parse(args[i + 1]);
-                                    value = new Matrix4x4(e[0], e[1], e[2], e[3], e[4], e[5], e[6], e[7], e[8], e[9], e[10], e[11], e[12], e[13], e[14], e[15]);
-                                    r += $" =>\n{value}";
-                                } else {
-                                    r += $" unchanged, args length {args.Length} != 17";
-                                }
-                            }
-                            CWriteLine(r); if (socket != null) socket.Send("= " + r);
-                        }
-
-                        // valops are shared with client, action getsv will transfer them all to client
-                        var valops = new Dictionary<String, Action> {
-                        { "maxdepth", () => { qseti(ref maxDepth); } },
-                        { "maxd", () => { qsetus(ref maxd); } },
-                        { "gmaxd", () => { qsetus(ref gmaxd); } },
-                        { "tad4background", () => { qsetb(ref tad4background); } },
-                        { "filterback", () => { qsetb(ref filterback); } },
-                        { "backdamp", () => { qsetf(ref backDamp); } },
-                        { "backextra", () => { qsetf(ref backExtra); } },
-                        { "fixdepth", () => { qsetus(ref fixDepth); } },
-                        { "backmin", () => { qsetf(ref backMin); } },
-                        { "baddamp", () => { qsetf(ref baddamp); } },
-                        // { "irthresh", () => { if (i sK2) qseti(ref irthresh2); else qseti(ref irthresh4); } },
-                        { "changedamp", () => { qsetf(ref changeDamp); } },
-                        // {"twistdamp", () => { qsetf(ref twistDamp); } },
-                        { "minchange", () => { qsetf(ref minChange); } },
-                        // { "corestep", () => { int o = coreStep; qseti(ref coreStep); if (o != coreStep) Allocate(socket); } },
-                        { "maxchange", () => { qsetf(ref maxChange); } },
-                        { "corewidthtarget", () => { int o = coreWidthTarget; qseti(ref coreWidthTarget); if (o != coreWidthTarget) Allocate(socket); } },
-                        { "edgethresh", () => { qseti(ref edgeThresh); } },
-                        { "depthchangethresh", () => { qseti(ref depthChangeThresh); } },
-                        { "mingoodn", () => { qsetf(ref minGoodn); } },
-                        { "oldtwist", () => { qsetb(ref oldtwist); } },
-                        { "depthgeomstep", () => { qseti(ref depthGeomStep); } },
-                        { "domedian", () => { qsetb(ref doMedian); } },
-                        { "flowreport", () => { qsetb(ref flowReport); } },
-                        { "mindepthextra", () => { qsetf(ref minDepthExtra); } },
-                        { "corefilterposweight", () => { qsetf(ref coreFilterPosWeight); } },
-                        { "corefilterchangeweight", () => { qsetf(ref coreFilterChangeWeight); } },
-                        { "depthgeomfilter", () => { qsetb(ref depthGeomFilter); } },
-                        { "usegeometrygrid", () => { qsetb(ref UseGeometryGrid); } },
-                        { "camviewrange", () => { qsetf(ref camviewRange); } },
-                        { "maxedgegeompoints", () => { qseti(ref maxedgeGeomPoints); } },
-                        { "lastedgegeompoints", () => { qseti(ref lastedgeGeomPoints); } },
-                        { "coresmooth", () => { qsetf(ref coresmooth); } },
-                        { "cofsmooth", () => { qsetf(ref cofsmooth); } },
-                        { "coretraildamp", () => { qsetf(ref coretraildamp); } },
-                        { "corexx", () => { qseti(ref corexx); CoreAllocate(); } },
-                        { "eigennormals", () => { qsetb(ref eigenNormals); CoreAllocate(); } },
-                    };
-                        var getsv = () => {
-                            foreach (KeyValuePair<string, Action> pair in valops) {
-                                oneMessage(pair.Key);
-                            }
-                            CWriteLine("#endgetsv");
-                            Send(socket, "#endgetsv");
-                            Stage("#endgetsv");
-                        };
-
-                        // actops are 'pure' actions, not used for initialization (?)
-                        var actops = new Dictionary<String, Action> {
-                        { "cammat", () => { qsetmm(ref camMat); } },
-                        { "kincammat", () => { qsetmm(ref kinCamMat); } },
-                        { "kincammatu", () => { kinCamMat = new(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1); } },
-                        { "savedir", () => { _savedir = args[1]; } },
-                        { "checkcalibration", () => { checkCalibration(0,0,1000); } },
-                        { "segment", () => { segmentnum = -1; Segment(); } },
-                        { "field3d", () => { Field3(); } },
-                        { "resetbackground", () => { ResetBackground(); } },
-                        { "killbackgroundbad", () => { KillBackgroundBad(); } },
-                        { "movebackground", () => { MoveBackground(float.Parse(args[1]), float.Parse(args[2])); } },
-                        { "movelikelybackground", () => { MoveLikelyBackground(float.Parse(args[1])); } },
-                        { "savebackground", () => { SaveBackground(); } },
-                        { "loadbackground", () => { LoadBackground(); } },
-                        { "debug", () => { qsetb(ref _debug); } },
-                        { "info", () => { Info(socket); } },
-                        { "killothersockets", () => { KillOtherSockets(socket); } },
-                        { "useazurecalibration", () => { qsetb(ref Azure.UseAzureCalibration); } },
-                        //{ "backgroundstats", () => {       // background stats for given pixel
-                        //    string d = JsonSerializer.Serialize(backgroundStats[int.Parse(argv)], jsonOptions);
-                        //    CWriteLine(d);
-                        //    if (socket != null) { Send(socket, "backgroundStats"); socket.Send(d); }
-                        //} },
-                        { "newmsfr", () => { Newmsfr(socket, message); } },
-                        { "close", () => { Close(); } },
-                        { "open", () => { Open(); } },
-                        { "kbest", () => { Close(); if (bestAzure) {socket.Send("kbest k4"); azure.Init(message, socket); } else {socket.Send("kbest k2"); kinect2.Init(message, socket);} } },
-                        { "k2", () => { Close(); kinect2.Init(message, socket); } },
-                        { "k4", () => { Close(); azure.Init(message, socket); } },
-                        { "orbbec", () => { Close(); orbbec.Init(message, socket); } },
-                        { "zed", () => { Close(); zed.Init(message, socket); } },  // commented out Stephen 21 Dev 2023, readded 15 June 2024
-                        // { "azure", () => { AzureInit(message, socket); } },
-                        { "get", () => { AcquireSendData(socket, message); } },
-                        // { "eigen", () => { Eigen.Eigentest(); } },
-                        { "", () => { CWriteLine(""); } },
-                        { "cls", () => { Console.Clear(); } },
-                        { "getsv", () => { getsv(); } },
-                        { "?accel", () => { 
-                            Vector3 v = activeDevice.Accel();
-                            Send(socket, $"?accel {v.X} {v.Y} {v.Z}");
-                        }},
-                        { "?", () => { getsv(); } }
-                    };
-                        valops.TryGetValue(name, out Action act);
-                        if (act == null) actops.TryGetValue(name, out act);
-                        if (act == null) {
-                            CWriteLine("message ignored '" + message + "'");
-                        } else {
-                            act();
-                        }
-                    }
-                    catch (Exception e) {
-                        CWriteLine("error handling message " + message + " " + e);
-                    }
-                } // lock
-            }   // oneMessage
-        }   // doMessage
+        // static readonly object _locker = new();
 
         static void KillOtherSockets(IWebSocketConnection socket) {
             for (int i = _clients.Count - 1; i >= 0; i--) {
@@ -296,7 +127,7 @@ namespace Kinect2WebServer {
         }
 
 
-        /** send depth summary data to requesting socket. Could be optimized if there were multiple sockets working at once. */
+        /** send depth summary data to requesting socketSL. Could be optimized if there were multiple sockets working at once. */
         private static void SendDepthBlock(IWebSocketConnection socket, VecPlus[] adata, string usage) {
             Send(socket, usage, adata); // OutCorePosition); //  ;
         }

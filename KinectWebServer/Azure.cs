@@ -316,8 +316,30 @@ namespace Kinect2WebServer {
             return true;
         }
 
+        // Accel() answers every '?accel' request (one per frame), but the IMU is no longer left running (memory leak, see
+        // PingAccel), and returning zero there left the client with no tilt and no floor recalibration when the Kinect was
+        // moved (organicart-1e6 follow-up). Instead the latest PingAccel reading is kept: the first one synchronously, then
+        // refreshed every AccelRefreshMs on a background task so a request never waits for the IMU.
+        private static Vector3 _lastAccel = Vector3.Zero;
+        private static long _lastAccelMs = 0;
+        private static int _accelBusy = 0;
+        private const long AccelRefreshMs = 2000;
+
         public Vector3 Accel() {
-            if (!imurunning) return Vector3.Zero;
+            if (!imurunning) {
+                long now = Environment.TickCount64;
+                if (now - _lastAccelMs > AccelRefreshMs && Interlocked.Exchange(ref _accelBusy, 1) == 0) {
+                    bool first = _lastAccelMs == 0;
+                    _lastAccelMs = now;
+                    var t = System.Threading.Tasks.Task.Run(() => {
+                        try { _lastAccel = PingAccel(500); }
+                        catch (Exception e) { CWriteLine("PingAccel failed: " + e.Message); }
+                        finally { _accelBusy = 0; }
+                    });
+                    if (first) t.Wait(1000);
+                }
+                return _lastAccel;
+            }
             try {
                 ImuSample imu = AzureDevice.GetImuSample(TimeSpan.FromMilliseconds(1));
                 Vector3 acc = imu.AccelerometerSample;

@@ -126,7 +126,7 @@ namespace Kinect2WebServer {
 
         static bool bestAzure; // , bestK2;
         // static bool bestOrbbec; 
-        static void NOTMain() {
+        static void Main() {
             // Program.ORBTEST(); return;
             // Thread.CurrentThread.Name = "Main";
             Console.CancelKeyPress += Exit;

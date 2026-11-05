@@ -2,7 +2,7 @@
 using Orbbec; // namespace name inferred - check actual using in a real sample if this doesn't compile
 class OrbProgram
 {
-    public static void Main() 
+    public static void OrbMain()   // Bolt test, not the entry point: Program.Main is (call it from there to try a Bolt) 
     {
         using var pipeline = new Pipeline();
 

@@ -271,6 +271,17 @@ namespace Kinect2WebServer {
         // It depends on an object's reflectivity.
         public bool Init(string message, IWebSocketConnection socket) {
             CWriteLine("Azure.Init() " + message);
+            // Leak fix (organicart-1e6): by default the SDK copies every native image into a new managed array when its
+            // pixels are read (SafeCopyNativeBuffers). Depth and IR are ~180KB each, so every 'get' put two arrays on the
+            // large object heap, which isn't compacted: ~150-250KB of growth per request, 2+ GB after a few hours (LOH
+            // 865MB, 707MB of it fragmentation, measured with dotnet-counters). Read the native buffers directly instead;
+            // every use copies them out (CopyTo / ToArray) before the image is disposed.
+            // Allocator is internal in SDK 1.4.1 (its properties are public), hence reflection.
+            var alloc = typeof(Device).Assembly.GetType("Microsoft.Azure.Kinect.Sensor.Allocator");
+            var allocInst = alloc?.GetProperty("Singleton", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)?.GetValue(null);
+            alloc?.GetProperty("SafeCopyNativeBuffers")?.SetValue(allocInst, false);
+            var safeCopy = alloc?.GetProperty("SafeCopyNativeBuffers")?.GetValue(allocInst);
+            CWriteLine("Azure SDK SafeCopyNativeBuffers = " + safeCopy);
             width = height = 0;
             AzureDepthMode = message;
             _lastAzuremsfr = "UNDEF";

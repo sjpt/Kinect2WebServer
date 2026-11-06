@@ -222,6 +222,7 @@ namespace Kinect2WebServer {
             if (valops == null || valops == null) makeops();
            lock(_locker) {
                 stagelist = new();
+                startstage.Clear();     // its keys include the whole message (with its timestamp): without this it grew by one entry per request, ~20MB/h (organicart-3hz)
                 Stage("#stages");
                 Stage("domessage " + messages);
                 string[] ss = messages.Split("!!");
